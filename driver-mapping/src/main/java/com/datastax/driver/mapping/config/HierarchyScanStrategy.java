@@ -34,7 +34,8 @@ public interface HierarchyScanStrategy {
      *                  {@link com.datastax.driver.mapping.annotations.UDT @UDT}.
      * @return the list of classes that should be scanned,
      * including {@code mappedClass} itself and its ancestors,
-     * ordered from the lowest (closest to {@code mappedClass}) to the highest (or farthest from {@code mappedClass}).
+     * ordered from the lowest (closest to {@code mappedClass})
+     * to the highest (or farthest from {@code mappedClass}).
      */
     List<Class<?>> filterClassHierarchy(Class<?> mappedClass);
 

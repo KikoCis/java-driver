@@ -108,7 +108,7 @@ class AnnotationChecks {
             int pos = property.mappedProperty.getPosition();
             if (pos != i)
                 throw new IllegalArgumentException(String.format("Invalid ordering value %d for annotation %s of property '%s', was expecting %d",
-                        pos, annotation, property, i));
+                        pos, annotation, property.mappedProperty.getPropertyName(), i));
         }
     }
 }

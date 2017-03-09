@@ -21,10 +21,20 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * A strategy to determine how mapped properties are read and written.
+ * A strategy to determine how mapped properties are discovered,
+ * and how to access them.
  */
 public interface PropertyAccessStrategy {
 
-    Set<MappedProperty<?>> mapProperties(List<Class<?>> classHierarchy);
+    /**
+     * Scans the given class hierarchy and determines which properties
+     * should be mapped.
+     * <p/>
+     * The class hierarchy is computed by {@link HierarchyScanStrategy}.
+     *
+     * @param classHierarchy The class hierarchy to scan.
+     * @return a set of {@link MappedProperty mapped properties}.
+     */
+    Set<? extends MappedProperty<?>> mapProperties(List<Class<?>> classHierarchy);
 
 }

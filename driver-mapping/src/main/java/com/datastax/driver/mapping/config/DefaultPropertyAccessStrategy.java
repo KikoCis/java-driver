@@ -15,9 +15,12 @@
  */
 package com.datastax.driver.mapping.config;
 
+import com.datastax.driver.mapping.AnnotatedMappedProperty;
 import com.datastax.driver.mapping.DefaultAnnotatedMappedProperty;
 import com.datastax.driver.mapping.MappedProperty;
 import com.google.common.base.Throwables;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.beans.BeanInfo;
 import java.beans.IntrospectionException;
@@ -33,20 +36,26 @@ import java.util.*;
 /**
  * The default access strategy used by the mapper.
  * <p/>
- * This strategy tries getters and setters first, if available,
- * then field access, as a last resort.
+ * This strategy can be configured to scan for {@link #isFieldScanAllowed() fields},
+ * {@link #isGetterSetterScanAllowed() getters and setters}, or both.
+ * The default is to scan for both.
  * <p/>
- * It recognizes standard getter and setter methods (as defined by the Java Beans specification),
- * and also "relaxed" setter methods, i.e., setter methods whose return type are not {@code void}.
+ * Note that if both field scan and getter/setter scan are disabled,
+ * this strategy will not be able to detect any mapped property.
  * <p/>
- * Property values are read and written using the Java reflection API. Subclasses
- * may override relevant methods if they are capable of accessing
- * properties without incurring the cost of reflection.
+ * This strategy recognizes standard getter and setter methods
+ * (as defined by the Java Beans specification),
+ * and also "relaxed" setter methods, i.e., setter methods
+ * whose return type are not {@code void}.
+ *
+ * @see DefaultAnnotatedMappedProperty
  */
 public class DefaultPropertyAccessStrategy implements PropertyAccessStrategy {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(DefaultPropertyAccessStrategy.class);
+
     @Override
-    public Set<MappedProperty<?>> mapProperties(List<Class<?>> classHierarchy) {
+    public Set<AnnotatedMappedProperty<?>> mapProperties(List<Class<?>> classHierarchy) {
         Map<String, Object[]> fieldsGettersAndSetters = new HashMap<String, Object[]>();
         if (isFieldScanAllowed()) {
             Map<String, Field> fields = scanFields(classHierarchy);
@@ -71,14 +80,23 @@ public class DefaultPropertyAccessStrategy implements PropertyAccessStrategy {
                 }
             }
         }
-        Set<MappedProperty<?>> mappedProperties = new HashSet<MappedProperty<?>>(fieldsGettersAndSetters.size());
+        Set<AnnotatedMappedProperty<?>> mappedProperties = new HashSet<AnnotatedMappedProperty<?>>(fieldsGettersAndSetters.size());
         for (Map.Entry<String, Object[]> entry : fieldsGettersAndSetters.entrySet()) {
             String propertyName = entry.getKey();
             Field field = (Field) entry.getValue()[0];
             Method getter = (Method) entry.getValue()[1];
             Method setter = (Method) entry.getValue()[2];
             Map<Class<? extends Annotation>, Annotation> annotations = scanPropertyAnnotations(field, getter);
-            mappedProperties.add(new DefaultAnnotatedMappedProperty(propertyName, field, getter, setter, annotations));
+            DefaultAnnotatedMappedProperty<?> property = new DefaultAnnotatedMappedProperty<Object>(propertyName, field, getter, setter, annotations);
+            if (!property.isComputed() && field == null && getter == null) {
+                LOGGER.warn(String.format("Property '%s' is not readable and will not be mapped", propertyName));
+                continue;
+            }
+            if (field == null && setter == null) {
+                LOGGER.warn(String.format("Property '%s' is not writable and will not be mapped", propertyName));
+                continue;
+            }
+            mappedProperties.add(property);
         }
         return mappedProperties;
     }
@@ -177,7 +195,7 @@ public class DefaultPropertyAccessStrategy implements PropertyAccessStrategy {
         HashMap<String, Field> fields = new HashMap<String, Field>();
         for (Class<?> clazz : classHierarchy) {
             for (Field field : clazz.getDeclaredFields()) {
-                if (field.isSynthetic() || Modifier.isStatic(field.getModifiers()))
+                if (field.isSynthetic() || Modifier.isStatic(field.getModifiers()) || Modifier.isTransient(field.getModifiers()))
                     continue;
                 // never override a more specific field masking another one declared in a superclass
                 if (!fields.containsKey(field.getName()))

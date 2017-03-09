@@ -29,7 +29,15 @@ import java.util.Map;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
- *
+ * Default implementation of {@link AnnotatedMappedProperty}.
+ * <p/>
+ * This is the concrete class that the mapper will use if the
+ * default {@link com.datastax.driver.mapping.config.PropertyAccessStrategy property access strategy}
+ * is in use.
+ * <p/>
+ * Property values are read and written using the Java reflection API. Subclasses
+ * may override relevant methods if they are capable of accessing
+ * properties without incurring the cost of reflection.
  */
 public class DefaultAnnotatedMappedProperty<T> extends DefaultMappedProperty<T> implements AnnotatedMappedProperty<T> {
 
@@ -41,13 +49,13 @@ public class DefaultAnnotatedMappedProperty<T> extends DefaultMappedProperty<T> 
     @SuppressWarnings("unchecked")
     public DefaultAnnotatedMappedProperty(String propertyName, Field field, Method getter, Method setter, Map<Class<? extends Annotation>, Annotation> annotations) {
         super(propertyName,
-                inferColumnName(propertyName, annotations),
+                inferMappedName(propertyName, annotations),
                 (TypeToken<T>) inferType(field, getter),
-                (TypeCodec<T>) createCustomCodec(annotations),
                 annotations.containsKey(PartitionKey.class),
                 annotations.containsKey(ClusteringColumn.class),
                 annotations.containsKey(Computed.class),
-                inferPosition(annotations)
+                inferPosition(annotations),
+                (TypeCodec<T>) createCustomCodec(annotations)
         );
         this.field = field;
         this.getter = getter;
@@ -105,9 +113,12 @@ public class DefaultAnnotatedMappedProperty<T> extends DefaultMappedProperty<T> 
             return TypeToken.of(checkNotNull(field).getGenericType());
     }
 
-    private static String inferColumnName(String propertyName, Map<Class<? extends Annotation>, Annotation> annotations) {
+    private static String inferMappedName(String propertyName, Map<Class<? extends Annotation>, Annotation> annotations) {
         if (annotations.containsKey(Computed.class)) {
-            return ((Computed) annotations.get(Computed.class)).value();
+            String expression = ((Computed) annotations.get(Computed.class)).value();
+            if (expression.isEmpty())
+                throw new IllegalArgumentException(String.format("Property '%s': attribute 'value' of annotation @Computed is mandatory for computed properties", propertyName));
+            return expression;
         }
         boolean caseSensitive = false;
         String columnName = propertyName;
@@ -123,6 +134,8 @@ public class DefaultAnnotatedMappedProperty<T> extends DefaultMappedProperty<T> 
             if (!udtmappedField.name().isEmpty())
                 columnName = udtmappedField.name();
         }
+        if (columnName.isEmpty())
+            throw new IllegalArgumentException(String.format("Property '%s': could not infer mapped name", propertyName));
         return caseSensitive ? Metadata.quote(columnName) : columnName.toLowerCase();
     }
 

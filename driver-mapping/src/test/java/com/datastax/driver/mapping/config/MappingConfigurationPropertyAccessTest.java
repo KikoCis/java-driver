@@ -138,8 +138,8 @@ public class MappingConfigurationPropertyAccessTest extends CCMTestsSupport {
                 .withPropertyAccessStrategy(new NoReflectionPropertyAccessStrategy())
                 .build();
         MappingManager mappingManager = new MappingManager(session(), conf);
-        Mapper<Foo3> mapper = mappingManager.mapper(Foo3.class);
-        Foo3 foo = mapper.get(1);
+        Mapper<Foo4> mapper = mappingManager.mapper(Foo4.class);
+        Foo4 foo = mapper.get(1);
         assertThat(foo.getV()).isEqualTo(1);
     }
 
@@ -178,7 +178,7 @@ public class MappingConfigurationPropertyAccessTest extends CCMTestsSupport {
 
             DefaultMappedProperty<Integer> k = new DefaultMappedProperty<Integer>(
                     "k", "k", TypeToken.of(Integer.class),
-                    null, true, false, false, 0) {
+                    true, false, false, 0, null) {
                 @Override
                 public Integer getValue(Object entity) {
                     return ((Foo4) entity).getK();
@@ -192,7 +192,7 @@ public class MappingConfigurationPropertyAccessTest extends CCMTestsSupport {
 
             DefaultMappedProperty<Integer> v = new DefaultMappedProperty<Integer>(
                     "v", "v", TypeToken.of(Integer.class),
-                    null, false, false, false, 0) {
+                    false, false, false, 0, null) {
                 @Override
                 public Integer getValue(Object entity) {
                     return ((Foo4) entity).getV();

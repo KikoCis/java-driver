@@ -265,27 +265,4 @@ public class MapperInvalidAnnotationsTest {
 
     }
 
-    @Test(groups = "unit", expectedExceptions = IllegalArgumentException.class,
-            expectedExceptionsMessageRegExp =
-                    "Property 'notReadable' is not readable")
-    public void should_throw_IAE_when_unreadable_property() throws Exception {
-        AnnotationParser.parseEntity(Invalid14.class, mappingManager);
-    }
-
-    @Table(name = "foo", keyspace = "ks")
-    static class Invalid15 {
-
-        public int getNotWritable() {
-            return 0;
-        }
-
-    }
-
-    @Test(groups = "unit", expectedExceptions = IllegalArgumentException.class,
-            expectedExceptionsMessageRegExp =
-                    "Property 'notWritable' is not writable")
-    public void should_throw_IAE_when_unwritable_property() throws Exception {
-        AnnotationParser.parseEntity(Invalid15.class, mappingManager);
-    }
-
 }

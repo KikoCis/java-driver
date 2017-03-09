@@ -35,7 +35,7 @@ enum QueryType {
                     : insertInto(table);
             for (PropertyMapper col : columns)
                 if (!col.mappedProperty.isComputed())
-                    insert.value(col.mappedProperty.getColumnName(), bindMarker());
+                    insert.value(col.mappedProperty.getMappedName(), bindMarker());
 
             Insert.Options usings = insert.using();
             for (Mapper.Option opt : options) {
@@ -54,8 +54,8 @@ enum QueryType {
             Select.Selection selection = select();
             for (PropertyMapper col : mapper.allColumns) {
                 Select.SelectionOrAlias column = col.mappedProperty.isComputed()
-                        ? selection.raw(col.mappedProperty.getColumnName())
-                        : selection.column(col.mappedProperty.getColumnName());
+                        ? selection.raw(col.mappedProperty.getMappedName())
+                        : selection.column(col.mappedProperty.getMappedName());
 
                 if (col.alias == null) {
                     selection = column;
@@ -71,7 +71,7 @@ enum QueryType {
             }
             Select.Where where = select.where();
             for (int i = 0; i < mapper.primaryKeySize(); i++)
-                where.and(eq(mapper.getPrimaryKeyColumn(i).mappedProperty.getColumnName(), bindMarker()));
+                where.and(eq(mapper.getPrimaryKeyColumn(i).mappedProperty.getMappedName(), bindMarker()));
 
             for (Mapper.Option opt : options)
                 opt.checkValidFor(QueryType.GET, manager);
@@ -87,7 +87,7 @@ enum QueryType {
                     : delete().all().from(table);
             Delete.Where where = delete.where();
             for (int i = 0; i < mapper.primaryKeySize(); i++)
-                where.and(eq(mapper.getPrimaryKeyColumn(i).mappedProperty.getColumnName(), bindMarker()));
+                where.and(eq(mapper.getPrimaryKeyColumn(i).mappedProperty.getMappedName(), bindMarker()));
             Delete.Options usings = delete.using();
             for (Mapper.Option opt : options) {
                 opt.checkValidFor(QueryType.DEL, manager);

@@ -110,7 +110,7 @@ class AnnotationParser {
 
         MappingConfiguration configuration = mappingManager.getConfiguration();
         List<Class<?>> classHierarchy = configuration.getHierarchyScanStrategy().filterClassHierarchy(entityClass);
-        Set<MappedProperty<?>> properties = configuration.getPropertyAccessStrategy().mapProperties(classHierarchy);
+        Set<? extends MappedProperty<?>> properties = configuration.getPropertyAccessStrategy().mapProperties(classHierarchy);
         AtomicInteger columnCounter = mappingManager.isCassandraV1 ? null : new AtomicInteger(0);
 
         for (MappedProperty<?> mappedProperty : properties) {
@@ -130,9 +130,9 @@ class AnnotationParser {
             if (mappedProperty instanceof AnnotatedMappedProperty)
                 AnnotationChecks.validateAnnotations(((AnnotatedMappedProperty<?>) mappedProperty), VALID_COLUMN_ANNOTATIONS);
 
-            if (!mappedProperty.isComputed() && tableMetadata.getColumn(mappedProperty.getColumnName()) == null)
+            if (!mappedProperty.isComputed() && tableMetadata.getColumn(mappedProperty.getMappedName()) == null)
                 throw new IllegalArgumentException(String.format("Column %s does not exist in table %s.%s",
-                        mappedProperty.getColumnName(), ksName, tableName));
+                        mappedProperty.getMappedName(), ksName, tableName));
 
             if (mappedProperty.isPartitionKey())
                 pks.add(propertyMapper);
@@ -184,7 +184,7 @@ class AnnotationParser {
 
         MappingConfiguration configuration = mappingManager.getConfiguration();
         List<Class<?>> classHierarchy = configuration.getHierarchyScanStrategy().filterClassHierarchy(udtClass);
-        Set<MappedProperty<?>> properties = configuration.getPropertyAccessStrategy().mapProperties(classHierarchy);
+        Set<? extends MappedProperty<?>> properties = configuration.getPropertyAccessStrategy().mapProperties(classHierarchy);
 
         for (MappedProperty<?> mappedProperty : properties) {
 
@@ -196,14 +196,14 @@ class AnnotationParser {
             if (mappedProperty instanceof AnnotatedMappedProperty)
                 AnnotationChecks.validateAnnotations(((AnnotatedMappedProperty<?>) mappedProperty), VALID_FIELD_ANNOTATIONS);
 
-            if (!userType.contains(mappedProperty.getColumnName()))
+            if (!userType.contains(mappedProperty.getMappedName()))
                 throw new IllegalArgumentException(String.format("Field %s does not exist in type %s.%s",
-                        mappedProperty.getColumnName(), ksName, userType.getTypeName()));
+                        mappedProperty.getMappedName(), ksName, userType.getTypeName()));
 
             for (Class<?> fieldUdt : TypeMappings.findUDTs(mappedProperty.getPropertyType().getType()))
                 mappingManager.getUDTCodec(fieldUdt);
 
-            propertyMappers.put(mappedProperty.getColumnName(), propertyMapper);
+            propertyMappers.put(mappedProperty.getMappedName(), propertyMapper);
         }
 
         return new MappedUDTCodec<T>(userType, udtClass, propertyMappers, mappingManager);

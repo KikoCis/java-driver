@@ -42,7 +42,7 @@ public class Result<T> implements PagingIterable<Result<T>, T> {
         for (PropertyMapper<?> c : mapper.allColumns) {
             @SuppressWarnings("unchecked")
             PropertyMapper<Object> col = (PropertyMapper<Object>) c;
-            String name = col.alias != null && this.useAlias ? col.alias : col.mappedProperty.getColumnName();
+            String name = col.alias != null && this.useAlias ? col.alias : col.mappedProperty.getMappedName();
             if (!row.getColumnDefinitions().contains(name))
                 continue;
 

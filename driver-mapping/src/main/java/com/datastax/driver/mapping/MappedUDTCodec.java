@@ -62,7 +62,7 @@ class MappedUDTCodec<T> extends TypeCodec.AbstractUDTCodec<T> {
         TypeCodec<Object> codec = propertyMapper.mappedProperty.getCustomCodec();
         if (codec == null)
             codec = codecRegistry.codecFor(cqlUserType.getFieldType(
-                    propertyMapper.mappedProperty.getColumnName()),
+                    propertyMapper.mappedProperty.getMappedName()),
                     propertyMapper.mappedProperty.getPropertyType());
 
         return codec.serialize(value, protocolVersion);
@@ -76,7 +76,7 @@ class MappedUDTCodec<T> extends TypeCodec.AbstractUDTCodec<T> {
             TypeCodec<Object> codec = propertyMapper.mappedProperty.getCustomCodec();
             if (codec == null)
                 codec = codecRegistry.codecFor(cqlUserType.getFieldType(
-                        propertyMapper.mappedProperty.getColumnName()),
+                        propertyMapper.mappedProperty.getMappedName()),
                         propertyMapper.mappedProperty.getPropertyType());
             propertyMapper.mappedProperty.setValue(target, codec.deserialize(input, protocolVersion));
         }
@@ -93,7 +93,7 @@ class MappedUDTCodec<T> extends TypeCodec.AbstractUDTCodec<T> {
         TypeCodec<Object> codec = propertyMapper.mappedProperty.getCustomCodec();
         if (codec == null)
             codec = codecRegistry.codecFor(cqlUserType.getFieldType(
-                    propertyMapper.mappedProperty.getColumnName()),
+                    propertyMapper.mappedProperty.getMappedName()),
                     propertyMapper.mappedProperty.getPropertyType());
         return codec.format(value);
     }
@@ -106,7 +106,7 @@ class MappedUDTCodec<T> extends TypeCodec.AbstractUDTCodec<T> {
             TypeCodec<Object> codec = propertyMapper.mappedProperty.getCustomCodec();
             if (codec == null)
                 codec = codecRegistry.codecFor(cqlUserType.getFieldType(
-                        propertyMapper.mappedProperty.getColumnName()),
+                        propertyMapper.mappedProperty.getMappedName()),
                         propertyMapper.mappedProperty.getPropertyType());
             propertyMapper.mappedProperty.setValue(target, codec.parse(input));
         }

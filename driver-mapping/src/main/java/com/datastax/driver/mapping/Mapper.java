@@ -396,7 +396,7 @@ public class Mapper<T> {
                     if (value == null) {
                         throw new IllegalArgumentException(
                                 String.format("Invalid null value for PRIMARY KEY column %s (argument %d)",
-                                        column.mappedProperty.getColumnName(), i));
+                                        column.mappedProperty.getMappedName(), i));
                     }
                     setObject(bs, i++, value, column);
                 }
@@ -607,7 +607,7 @@ public class Mapper<T> {
                     PropertyMapper<Object> column = (PropertyMapper<Object>) mapper.getPrimaryKeyColumn(columnNumber);
                     if (value == null) {
                         throw new IllegalArgumentException(String.format("Invalid null value for PRIMARY KEY column %s (argument %d)",
-                                column.mappedProperty.getColumnName(), i));
+                                column.mappedProperty.getMappedName(), i));
                     }
                     setObject(bs, i++, value, column);
                     columnNumber++;

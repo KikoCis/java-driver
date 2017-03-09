@@ -19,7 +19,7 @@ import java.lang.annotation.Annotation;
 import java.util.Collection;
 
 /**
- *
+ * A mapped property that can be configured with annotations.
  */
 public interface AnnotatedMappedProperty<T> extends MappedProperty<T> {
 
