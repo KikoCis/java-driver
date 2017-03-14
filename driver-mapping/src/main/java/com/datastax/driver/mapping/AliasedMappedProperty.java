@@ -15,18 +15,13 @@
  */
 package com.datastax.driver.mapping;
 
-import java.lang.annotation.Annotation;
-import java.util.Collection;
+class AliasedMappedProperty<T> {
 
-/**
- * A mapped property that can be configured with annotations.
- */
-public interface AnnotatedMappedProperty<T> extends MappedProperty<T> {
+    final MappedProperty<T> mappedProperty;
+    final String alias;
 
-    boolean hasAnnotation(Class<? extends Annotation> annotationClass);
-
-    <A extends Annotation> A getAnnotation(Class<A> annotationClass);
-
-    Collection<Annotation> getAnnotations();
-
+    AliasedMappedProperty(MappedProperty<T> mappedProperty, String alias) {
+        this.mappedProperty = mappedProperty;
+        this.alias = alias;
+    }
 }

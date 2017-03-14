@@ -19,7 +19,6 @@ import com.datastax.driver.core.*;
 import com.datastax.driver.mapping.annotations.Accessor;
 import com.datastax.driver.mapping.annotations.Table;
 import com.datastax.driver.mapping.annotations.UDT;
-import com.datastax.driver.mapping.config.MappingConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -16,8 +16,7 @@
 package com.datastax.driver.mapping.config;
 
 import com.datastax.driver.core.CCMTestsSupport;
-import com.datastax.driver.mapping.Mapper;
-import com.datastax.driver.mapping.MappingManager;
+import com.datastax.driver.mapping.*;
 import com.datastax.driver.mapping.annotations.PartitionKey;
 import com.datastax.driver.mapping.annotations.Table;
 import com.datastax.driver.mapping.annotations.Transient;
@@ -39,7 +38,8 @@ public class MappingConfigurationTransienceStrategyTest extends CCMTestsSupport 
     @Test(groups = "short")
     public void should_map_only_non_transient() {
         MappingConfiguration conf = MappingConfiguration.builder()
-                .withPropertyTransienceStrategy(new DefaultPropertyTransienceStrategy())
+                .withPropertyMapper(new DefaultPropertyMapper()
+                        .setPropertyTransienceStrategy(PropertyTransienceStrategy.OPT_OUT))
                 .build();
         MappingManager mappingManager = new MappingManager(session(), conf);
         Mapper<Foo1> mapper = mappingManager.mapper(Foo1.class);
@@ -78,7 +78,8 @@ public class MappingConfigurationTransienceStrategyTest extends CCMTestsSupport 
     @Test(groups = "short")
     public void should_map_only_annotated() {
         MappingConfiguration conf = MappingConfiguration.builder()
-                .withPropertyTransienceStrategy(new OptInPropertyTransienceStrategy())
+                .withPropertyMapper(new DefaultPropertyMapper()
+                        .setPropertyTransienceStrategy(PropertyTransienceStrategy.OPT_IN))
                 .build();
         MappingManager mappingManager = new MappingManager(session(), conf);
         mappingManager.mapper(Foo2.class);

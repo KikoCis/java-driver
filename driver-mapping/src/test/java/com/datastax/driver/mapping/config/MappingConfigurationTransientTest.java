@@ -16,6 +16,8 @@
 package com.datastax.driver.mapping.config;
 
 import com.datastax.driver.core.CCMTestsSupport;
+import com.datastax.driver.mapping.DefaultPropertyMapper;
+import com.datastax.driver.mapping.MappingConfiguration;
 import com.datastax.driver.mapping.MappingManager;
 import com.datastax.driver.mapping.annotations.PartitionKey;
 import com.datastax.driver.mapping.annotations.Table;
@@ -78,7 +80,8 @@ public class MappingConfigurationTransientTest extends CCMTestsSupport {
     @Test(groups = "short")
     public void should_ignore_property_if_declared_transient_in_mapper_configuration() {
         MappingConfiguration conf = MappingConfiguration.builder()
-                .withPropertyTransienceStrategy(new DefaultPropertyTransienceStrategy("notAColumn"))
+                .withPropertyMapper(new DefaultPropertyMapper()
+                        .addTransientPropertyNames("notAColumn"))
                 .build();
         MappingManager mappingManager = new MappingManager(session(), conf);
         mappingManager.mapper(Foo3.class);

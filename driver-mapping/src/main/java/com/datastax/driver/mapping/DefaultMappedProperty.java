@@ -16,17 +16,48 @@
 package com.datastax.driver.mapping;
 
 import com.datastax.driver.core.TypeCodec;
+import com.datastax.driver.mapping.annotations.*;
 import com.google.common.reflect.TypeToken;
+
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
- * A base implementation of {@link MappedProperty}.
- * <p/>
- * Actual read and write operations are left for subclasses to implement.
+ * Default implementation of {@link MappedProperty}.
  */
-public abstract class DefaultMappedProperty<T> implements MappedProperty<T> {
+class DefaultMappedProperty<T> implements MappedProperty<T> {
+
+    /**
+     * Creates an instance of {@link DefaultMappedProperty} for the given
+     * name, field, getter, setter, and annotations.
+     *
+     * @param <T>          the type parameter
+     * @param propertyName the property name
+     * @param field        the field
+     * @param getter       the getter
+     * @param setter       the setter
+     * @param annotations  the annotations
+     * @return the reflection based mapped property
+     */
+    static <T> DefaultMappedProperty<T> create(String propertyName, String mappedName, Field field, Method getter, Method setter, Map<Class<? extends Annotation>, Annotation> annotations) {
+        @SuppressWarnings("unchecked")
+        TypeToken<T> propertyType = (TypeToken<T>) inferType(field, getter);
+        boolean partitionKey = annotations.containsKey(PartitionKey.class);
+        boolean clusteringColumn = annotations.containsKey(ClusteringColumn.class);
+        boolean computed = annotations.containsKey(Computed.class);
+        int position = inferPosition(annotations);
+        @SuppressWarnings("unchecked")
+        Class<? extends TypeCodec<T>> codecClass = (Class<? extends TypeCodec<T>>) getCustomCodecClass(annotations);
+        return new DefaultMappedProperty<T>(
+                propertyName, mappedName, propertyType,
+                partitionKey, clusteringColumn, computed, position, codecClass, field, getter, setter);
+
+    }
 
     private final String propertyName;
     private final TypeToken<T> propertyType;
@@ -36,33 +67,14 @@ public abstract class DefaultMappedProperty<T> implements MappedProperty<T> {
     private final boolean computed;
     private final int position;
     private final TypeCodec<T> customCodec;
+    private final Field field;
+    private final Method getter;
+    private final Method setter;
 
-    /**
-     * Creates a new "regular" property, i.e. a property that is neither a partition key,
-     * nor clustering column, nor a computed expression.
-     *
-     * @param propertyName The property name; may not be {@code null}.
-     * @param mappedName   The mapped name; may not be {@code null}.
-     * @param propertyType The property type; may not be {@code null}.
-     */
-    public DefaultMappedProperty(String propertyName, String mappedName, TypeToken<T> propertyType) {
-        this(propertyName, mappedName, propertyType, false, false, false, -1, null);
-    }
-
-    /**
-     * Creates a new property.
-     *
-     * @param propertyName     The property name; may not be {@code null}.
-     * @param mappedName       The mapped name; may not be {@code null} nor empty.
-     * @param propertyType     The property type; may not be {@code null} nor empty.
-     * @param partitionKey     Whether or not this property is part of the partition key.
-     * @param clusteringColumn Whether or not this property is a clustering column.
-     * @param computed         Whether or not this property is computed.
-     * @param position         The position of this property among partition key columns, or clustering columns.
-     * @param customCodec      The custom codec to use for this property; may be {@code null}.
-     */
-    public DefaultMappedProperty(String propertyName, String mappedName, TypeToken<T> propertyType,
-                                 boolean partitionKey, boolean clusteringColumn, boolean computed, int position, TypeCodec<T> customCodec) {
+    private DefaultMappedProperty(
+            String propertyName, String mappedName, TypeToken<T> propertyType,
+            boolean partitionKey, boolean clusteringColumn, boolean computed, int position,
+            Class<? extends TypeCodec<T>> codecClass, Field field, Method getter, Method setter) {
         checkArgument(propertyName != null && !propertyName.isEmpty());
         checkArgument(mappedName != null && !mappedName.isEmpty());
         checkNotNull(propertyType);
@@ -73,7 +85,10 @@ public abstract class DefaultMappedProperty<T> implements MappedProperty<T> {
         this.clusteringColumn = clusteringColumn;
         this.computed = computed;
         this.position = position;
-        this.customCodec = customCodec;
+        this.customCodec = codecClass == null || codecClass.equals(Defaults.NoCodec.class) ? null : ReflectionUtils.newInstance(codecClass);
+        this.field = field;
+        this.getter = getter;
+        this.setter = setter;
     }
 
     @Override
@@ -116,9 +131,64 @@ public abstract class DefaultMappedProperty<T> implements MappedProperty<T> {
         return clusteringColumn;
     }
 
+    @SuppressWarnings("unchecked")
+    @Override
+    public T getValue(Object entity) {
+        try {
+            // try getter first, if available, otherwise direct field access
+            if (getter != null && getter.isAccessible())
+                return (T) getter.invoke(entity);
+            else
+                return (T) checkNotNull(field).get(entity);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Unable to read property '" + getPropertyName() + "' in " + entity.getClass(), e);
+        }
+    }
+
+    @Override
+    public void setValue(Object entity, T value) {
+        try {
+            // try setter first, if available, otherwise direct field access
+            if (setter != null && setter.isAccessible())
+                setter.invoke(entity, value);
+            else
+                checkNotNull(field).set(entity, value);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Unable to write property '" + getPropertyName() + "' in " + entity.getClass(), e);
+        }
+    }
+
     @Override
     public String toString() {
         return getPropertyName();
+    }
+
+    private static TypeToken<?> inferType(Field field, Method getter) {
+        if (getter != null)
+            return TypeToken.of(getter.getGenericReturnType());
+        else
+            return TypeToken.of(checkNotNull(field).getGenericType());
+    }
+
+    private static int inferPosition(Map<Class<? extends Annotation>, Annotation> annotations) {
+        if (annotations.containsKey(PartitionKey.class)) {
+            return ((PartitionKey) annotations.get(PartitionKey.class)).value();
+        }
+        if (annotations.containsKey(ClusteringColumn.class)) {
+            return ((ClusteringColumn) annotations.get(ClusteringColumn.class)).value();
+        }
+        return -1;
+    }
+
+    private static Class<? extends TypeCodec<?>> getCustomCodecClass(Map<Class<? extends Annotation>, Annotation> annotations) {
+        Column column = (Column) annotations.get(Column.class);
+        if (column != null)
+            return column.codec();
+        com.datastax.driver.mapping.annotations.Field udtField =
+                (com.datastax.driver.mapping.annotations.Field) annotations.get(com.datastax.driver.mapping.annotations.Field.class);
+        if (udtField != null)
+            return udtField.codec();
+        return null;
     }
 
 }

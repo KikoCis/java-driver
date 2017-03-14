@@ -29,11 +29,11 @@ enum QueryType {
 
     SAVE {
         @Override
-        String makePreparedQueryString(TableMetadata table, EntityMapper<?> mapper, MappingManager manager, Set<PropertyMapper> columns, Collection<Mapper.Option> options) {
+        String makePreparedQueryString(TableMetadata table, EntityMapper<?> mapper, MappingManager manager, Set<AliasedMappedProperty> columns, Collection<Mapper.Option> options) {
             Insert insert = table == null
                     ? insertInto(mapper.keyspace, mapper.table)
                     : insertInto(table);
-            for (PropertyMapper col : columns)
+            for (AliasedMappedProperty col : columns)
                 if (!col.mappedProperty.isComputed())
                     insert.value(col.mappedProperty.getMappedName(), bindMarker());
 
@@ -50,9 +50,9 @@ enum QueryType {
 
     GET {
         @Override
-        String makePreparedQueryString(TableMetadata table, EntityMapper<?> mapper, MappingManager manager, Set<PropertyMapper> columns, Collection<Mapper.Option> options) {
+        String makePreparedQueryString(TableMetadata table, EntityMapper<?> mapper, MappingManager manager, Set<AliasedMappedProperty> columns, Collection<Mapper.Option> options) {
             Select.Selection selection = select();
-            for (PropertyMapper col : mapper.allColumns) {
+            for (AliasedMappedProperty col : mapper.allColumns) {
                 Select.SelectionOrAlias column = col.mappedProperty.isComputed()
                         ? selection.raw(col.mappedProperty.getMappedName())
                         : selection.column(col.mappedProperty.getMappedName());
@@ -81,7 +81,7 @@ enum QueryType {
 
     DEL {
         @Override
-        String makePreparedQueryString(TableMetadata table, EntityMapper<?> mapper, MappingManager manager, Set<PropertyMapper> columns, Collection<Mapper.Option> options) {
+        String makePreparedQueryString(TableMetadata table, EntityMapper<?> mapper, MappingManager manager, Set<AliasedMappedProperty> columns, Collection<Mapper.Option> options) {
             Delete delete = table == null
                     ? delete().all().from(mapper.keyspace, mapper.table)
                     : delete().all().from(table);
@@ -93,11 +93,11 @@ enum QueryType {
                 opt.checkValidFor(QueryType.DEL, manager);
                 if (opt.isIncludedInQuery())
                     opt.appendTo(usings);
-                    }
+            }
             return delete.toString();
         }
     };
 
-    abstract String makePreparedQueryString(TableMetadata table, EntityMapper<?> mapper, MappingManager manager, Set<PropertyMapper> columns, Collection<Mapper.Option> options);
+    abstract String makePreparedQueryString(TableMetadata table, EntityMapper<?> mapper, MappingManager manager, Set<AliasedMappedProperty> columns, Collection<Mapper.Option> options);
 
 }

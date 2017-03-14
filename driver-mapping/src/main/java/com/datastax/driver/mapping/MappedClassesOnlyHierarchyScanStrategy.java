@@ -13,17 +13,23 @@
  *   See the License for the specific language governing permissions and
  *   limitations under the License.
  */
-package com.datastax.driver.mapping.config;
+package com.datastax.driver.mapping;
+
+import java.util.Collections;
+import java.util.List;
 
 /**
- * A {@link PropertyAccessStrategy} that will always use field access exclusively
- * and ignore any available getters or setters.
+ * A {@link HierarchyScanStrategy} that excludes all ancestors of mapped classes, thus
+ * restricting class scan to the mapped classes themselves.
+ * <p>
+ * This strategy can be used instead of {@link DefaultHierarchyScanStrategy} to
+ * achieve pre-<a href="https://datastax-oss.atlassian.net/browse/JAVA-541">JAVA-541</a>
+ * behavior.
  */
-public class FieldOnlyPropertyAccessStrategy extends DefaultPropertyAccessStrategy {
+public class MappedClassesOnlyHierarchyScanStrategy implements HierarchyScanStrategy {
 
     @Override
-    protected boolean isGetterSetterScanAllowed() {
-        return false;
+    public List<Class<?>> filterClassHierarchy(Class<?> mappedClass) {
+        return Collections.<Class<?>>singletonList(mappedClass);
     }
-
 }

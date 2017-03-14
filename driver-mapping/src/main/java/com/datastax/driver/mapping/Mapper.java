@@ -103,7 +103,7 @@ public class Mapper<T> {
         return manager.getSession();
     }
 
-    ListenableFuture<PreparedStatement> getPreparedQueryAsync(QueryType type, Set<PropertyMapper> columns, EnumMap<Option.Type, Option> options) {
+    ListenableFuture<PreparedStatement> getPreparedQueryAsync(QueryType type, Set<AliasedMappedProperty> columns, EnumMap<Option.Type, Option> options) {
 
         final MapperQueryKey pqk = new MapperQueryKey(type, columns, options);
         ListenableFuture<PreparedStatement> existingFuture = preparedQueries.get(pqk);
@@ -140,7 +140,7 @@ public class Mapper<T> {
     }
 
     ListenableFuture<PreparedStatement> getPreparedQueryAsync(QueryType type, EnumMap<Option.Type, Option> options) {
-        return getPreparedQueryAsync(type, Collections.<PropertyMapper>emptySet(), options);
+        return getPreparedQueryAsync(type, Collections.<AliasedMappedProperty>emptySet(), options);
     }
 
     Class<T> getMappedClass() {
@@ -214,10 +214,10 @@ public class Mapper<T> {
     }
 
     private ListenableFuture<BoundStatement> saveQueryAsync(T entity, final EnumMap<Option.Type, Option> options) {
-        final Map<PropertyMapper, Object> values = new HashMap<PropertyMapper, Object>();
+        final Map<AliasedMappedProperty, Object> values = new HashMap<AliasedMappedProperty, Object>();
         boolean saveNullFields = shouldSaveNullFields(options);
 
-        for (PropertyMapper col : mapper.allColumns) {
+        for (AliasedMappedProperty col : mapper.allColumns) {
             Object value = col.mappedProperty.getValue(entity);
             if (!col.mappedProperty.isComputed() && (saveNullFields || value != null)) {
                 values.put(col, value);
@@ -229,8 +229,8 @@ public class Mapper<T> {
             public BoundStatement apply(PreparedStatement input) {
                 BoundStatement bs = input.bind();
                 int i = 0;
-                for (Map.Entry<PropertyMapper, Object> entry : values.entrySet()) {
-                    PropertyMapper mapper = entry.getKey();
+                for (Map.Entry<AliasedMappedProperty, Object> entry : values.entrySet()) {
+                    AliasedMappedProperty mapper = entry.getKey();
                     Object value = entry.getValue();
                     setObject(bs, i++, value, mapper);
                 }
@@ -253,7 +253,7 @@ public class Mapper<T> {
         return option == null || option.saveNullFields;
     }
 
-    private static <T> void setObject(BoundStatement bs, int i, T value, PropertyMapper<T> mapper) {
+    private static <T> void setObject(BoundStatement bs, int i, T value, AliasedMappedProperty<T> mapper) {
         TypeCodec<T> customCodec = mapper.mappedProperty.getCustomCodec();
         if (customCodec != null)
             bs.set(i, value, customCodec);
@@ -392,7 +392,7 @@ public class Mapper<T> {
                 int i = 0;
                 for (Object value : primaryKeys) {
                     @SuppressWarnings("unchecked")
-                    PropertyMapper<Object> column = (PropertyMapper<Object>) mapper.getPrimaryKeyColumn(i);
+                    AliasedMappedProperty<Object> column = (AliasedMappedProperty<Object>) mapper.getPrimaryKeyColumn(i);
                     if (value == null) {
                         throw new IllegalArgumentException(
                                 String.format("Invalid null value for PRIMARY KEY column %s (argument %d)",
@@ -604,7 +604,7 @@ public class Mapper<T> {
                 int columnNumber = 0;
                 for (Object value : primaryKey) {
                     @SuppressWarnings("unchecked")
-                    PropertyMapper<Object> column = (PropertyMapper<Object>) mapper.getPrimaryKeyColumn(columnNumber);
+                    AliasedMappedProperty<Object> column = (AliasedMappedProperty<Object>) mapper.getPrimaryKeyColumn(columnNumber);
                     if (value == null) {
                         throw new IllegalArgumentException(String.format("Invalid null value for PRIMARY KEY column %s (argument %d)",
                                 column.mappedProperty.getMappedName(), i));
@@ -1136,14 +1136,14 @@ public class Mapper<T> {
     private static class MapperQueryKey {
         private final QueryType queryType;
         private final EnumSet<Option.Type> optionTypes;
-        private final Set<PropertyMapper> columns;
+        private final Set<AliasedMappedProperty> columns;
 
-        MapperQueryKey(QueryType queryType, Set<PropertyMapper> propertyMappers, EnumMap<Option.Type, Option> options) {
+        MapperQueryKey(QueryType queryType, Set<AliasedMappedProperty> aliasedMappedProperties, EnumMap<Option.Type, Option> options) {
             Preconditions.checkNotNull(queryType);
             Preconditions.checkNotNull(options);
-            Preconditions.checkNotNull(propertyMappers);
+            Preconditions.checkNotNull(aliasedMappedProperties);
             this.queryType = queryType;
-            this.columns = propertyMappers;
+            this.columns = aliasedMappedProperties;
             this.optionTypes = EnumSet.noneOf(Option.Type.class);
             for (Option opt : options.values()) {
                 if (opt.isIncludedInQuery())

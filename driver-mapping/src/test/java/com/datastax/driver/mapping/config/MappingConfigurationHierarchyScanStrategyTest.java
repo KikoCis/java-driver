@@ -16,8 +16,7 @@
 package com.datastax.driver.mapping.config;
 
 import com.datastax.driver.core.CCMTestsSupport;
-import com.datastax.driver.mapping.Mapper;
-import com.datastax.driver.mapping.MappingManager;
+import com.datastax.driver.mapping.*;
 import com.datastax.driver.mapping.annotations.Column;
 import com.datastax.driver.mapping.annotations.PartitionKey;
 import com.datastax.driver.mapping.annotations.Table;
@@ -41,7 +40,8 @@ public class MappingConfigurationHierarchyScanStrategyTest extends CCMTestsSuppo
     @Test(groups = "short")
     public void should_not_inherit_annotations_when_hierarchy_scan_disabled() {
         MappingConfiguration conf = MappingConfiguration.builder()
-                .withHierarchyScanStrategy(new MappedClassesOnlyHierarchyScanStrategy())
+                .withPropertyMapper(new DefaultPropertyMapper()
+                        .setHierarchyScanStrategy(new MappedClassesOnlyHierarchyScanStrategy()))
                 .build();
         MappingManager mappingManager = new MappingManager(session(), conf);
         mappingManager.mapper(Child1.class);
@@ -75,7 +75,8 @@ public class MappingConfigurationHierarchyScanStrategyTest extends CCMTestsSuppo
     @Test(groups = "short")
     public void should_inherit_annotations_up_to_highest_ancestor_exluded() {
         MappingConfiguration conf = MappingConfiguration.builder()
-                .withHierarchyScanStrategy(new DefaultHierarchyScanStrategy(GrandParent2.class, false))
+                .withPropertyMapper(new DefaultPropertyMapper()
+                        .setHierarchyScanStrategy(new DefaultHierarchyScanStrategy(GrandParent2.class, false)))
                 .build();
         MappingManager mappingManager = new MappingManager(session(), conf);
         Mapper<Child2> mapper = mappingManager.mapper(Child2.class);
@@ -85,7 +86,8 @@ public class MappingConfigurationHierarchyScanStrategyTest extends CCMTestsSuppo
     @Test(groups = "short")
     public void should_inherit_annotations_up_to_highest_ancestor_included() {
         MappingConfiguration conf = MappingConfiguration.builder()
-                .withHierarchyScanStrategy(new DefaultHierarchyScanStrategy(Parent2.class, true))
+                .withPropertyMapper(new DefaultPropertyMapper()
+                        .setHierarchyScanStrategy(new DefaultHierarchyScanStrategy(Parent2.class, true)))
                 .build();
         MappingManager mappingManager = new MappingManager(session(), conf);
         Mapper<Child2> mapper = mappingManager.mapper(Child2.class);

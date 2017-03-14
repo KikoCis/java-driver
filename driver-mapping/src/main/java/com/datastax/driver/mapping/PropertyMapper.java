@@ -15,20 +15,28 @@
  */
 package com.datastax.driver.mapping;
 
+import java.util.Set;
+
 /**
- * Maps a Java bean property to a table column or a UDT field.
- * <p>
- * Properties can be either accessed through getter and setter pairs,
- * or by direct field access, depending on what is available in the
- * entity/UDT class.
+ * A pluggable component that maps
+ * Java properties to a Cassandra objects.
  */
-class PropertyMapper<T> {
+public interface PropertyMapper {
 
-    final MappedProperty<T> mappedProperty;
-    final String alias;
+    /**
+     * Maps the given table class.
+     *
+     * @param tableClass the table class.
+     * @return a set of mapped properties for the given class.
+     */
+    Set<? extends MappedProperty<?>> mapTable(Class<?> tableClass);
 
-    PropertyMapper(MappedProperty<T> mappedProperty, String alias) {
-        this.mappedProperty = mappedProperty;
-        this.alias = alias;
-    }
+    /**
+     * Maps the given UDT class.
+     *
+     * @param udtClass the UDT class.
+     * @return a set of mapped properties for the given class.
+     */
+    Set<? extends MappedProperty<?>> mapUdt(Class<?> udtClass);
+
 }

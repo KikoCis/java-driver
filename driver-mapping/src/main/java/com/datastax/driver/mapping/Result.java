@@ -39,9 +39,9 @@ public class Result<T> implements PagingIterable<Result<T>, T> {
 
     private T map(Row row) {
         T entity = mapper.newEntity();
-        for (PropertyMapper<?> c : mapper.allColumns) {
+        for (AliasedMappedProperty<?> c : mapper.allColumns) {
             @SuppressWarnings("unchecked")
-            PropertyMapper<Object> col = (PropertyMapper<Object>) c;
+            AliasedMappedProperty<Object> col = (AliasedMappedProperty<Object>) c;
             String name = col.alias != null && this.useAlias ? col.alias : col.mappedProperty.getMappedName();
             if (!row.getColumnDefinitions().contains(name))
                 continue;

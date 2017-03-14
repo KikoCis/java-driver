@@ -18,9 +18,7 @@ package com.datastax.driver.mapping;
 import com.datastax.driver.core.*;
 import com.datastax.driver.mapping.MethodMapper.ParamMapper;
 import com.datastax.driver.mapping.annotations.*;
-import com.datastax.driver.mapping.config.MappingConfiguration;
 import com.google.common.base.Strings;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.TypeToken;
 
 import java.lang.annotation.Annotation;
@@ -39,32 +37,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 @SuppressWarnings({"unchecked", "WeakerAccess"})
 class AnnotationParser {
 
-    /**
-     * Annotations allowed on a property that maps to a table column.
-     */
-    private static final Set<Class<? extends Annotation>> VALID_COLUMN_ANNOTATIONS = ImmutableSet.of(
-            Column.class,
-            Computed.class,
-            ClusteringColumn.class,
-            Frozen.class,
-            FrozenKey.class,
-            FrozenValue.class,
-            PartitionKey.class,
-            Transient.class);
-
-    /**
-     * Annotations allowed on a property that maps to a UDT field.
-     */
-    private static final Set<Class<? extends Annotation>> VALID_FIELD_ANNOTATIONS = ImmutableSet.of(
-            Field.class,
-            Frozen.class,
-            FrozenKey.class,
-            FrozenValue.class,
-            Transient.class);
-
-    private static final Comparator<PropertyMapper<?>> POSITION_COMPARATOR = new Comparator<PropertyMapper<?>>() {
+    private static final Comparator<AliasedMappedProperty<?>> POSITION_COMPARATOR = new Comparator<AliasedMappedProperty<?>>() {
         @Override
-        public int compare(PropertyMapper<?> o1, PropertyMapper<?> o2) {
+        public int compare(AliasedMappedProperty<?> o1, AliasedMappedProperty<?> o2) {
             return o1.mappedProperty.getPosition() - o2.mappedProperty.getPosition();
         }
     };
@@ -104,42 +79,35 @@ class AnnotationParser {
 
         EntityMapper<T> mapper = new EntityMapper<T>(entityClass, ksName, tableName, writeConsistency, readConsistency);
 
-        List<PropertyMapper<?>> pks = new ArrayList<PropertyMapper<?>>();
-        List<PropertyMapper<?>> ccs = new ArrayList<PropertyMapper<?>>();
-        List<PropertyMapper<?>> rgs = new ArrayList<PropertyMapper<?>>();
+        List<AliasedMappedProperty<?>> pks = new ArrayList<AliasedMappedProperty<?>>();
+        List<AliasedMappedProperty<?>> ccs = new ArrayList<AliasedMappedProperty<?>>();
+        List<AliasedMappedProperty<?>> rgs = new ArrayList<AliasedMappedProperty<?>>();
 
         MappingConfiguration configuration = mappingManager.getConfiguration();
-        List<Class<?>> classHierarchy = configuration.getHierarchyScanStrategy().filterClassHierarchy(entityClass);
-        Set<? extends MappedProperty<?>> properties = configuration.getPropertyAccessStrategy().mapProperties(classHierarchy);
+        Set<? extends MappedProperty<?>> properties = configuration.getPropertyMapper().mapTable(entityClass);
         AtomicInteger columnCounter = mappingManager.isCassandraV1 ? null : new AtomicInteger(0);
 
         for (MappedProperty<?> mappedProperty : properties) {
-
-            if (configuration.getPropertyTransienceStrategy().isTransient(mappedProperty))
-                continue;
 
             String alias = (columnCounter != null)
                     ? "col" + columnCounter.incrementAndGet()
                     : null;
 
-            PropertyMapper<?> propertyMapper = new PropertyMapper(mappedProperty, alias);
+            AliasedMappedProperty<?> aliasedMappedProperty = new AliasedMappedProperty(mappedProperty, alias);
 
             if (mappingManager.isCassandraV1 && mappedProperty.isComputed())
                 throw new UnsupportedOperationException("Computed properties are not supported with native protocol v1");
-
-            if (mappedProperty instanceof AnnotatedMappedProperty)
-                AnnotationChecks.validateAnnotations(((AnnotatedMappedProperty<?>) mappedProperty), VALID_COLUMN_ANNOTATIONS);
 
             if (!mappedProperty.isComputed() && tableMetadata.getColumn(mappedProperty.getMappedName()) == null)
                 throw new IllegalArgumentException(String.format("Column %s does not exist in table %s.%s",
                         mappedProperty.getMappedName(), ksName, tableName));
 
             if (mappedProperty.isPartitionKey())
-                pks.add(propertyMapper);
+                pks.add(aliasedMappedProperty);
             else if (mappedProperty.isClusteringColumn())
-                ccs.add(propertyMapper);
+                ccs.add(aliasedMappedProperty);
             else
-                rgs.add(propertyMapper);
+                rgs.add(aliasedMappedProperty);
 
             // if the property is of a UDT type, parse it now
             for (Class<?> udt : TypeMappings.findUDTs(mappedProperty.getPropertyType().getType()))
@@ -180,21 +148,14 @@ class AnnotationParser {
         if (userType == null)
             throw new IllegalArgumentException(String.format("User type %s does not exist in keyspace %s", udtName, ksName));
 
-        Map<String, PropertyMapper<?>> propertyMappers = new HashMap<String, PropertyMapper<?>>();
+        Map<String, AliasedMappedProperty<?>> propertyMappers = new HashMap<String, AliasedMappedProperty<?>>();
 
         MappingConfiguration configuration = mappingManager.getConfiguration();
-        List<Class<?>> classHierarchy = configuration.getHierarchyScanStrategy().filterClassHierarchy(udtClass);
-        Set<? extends MappedProperty<?>> properties = configuration.getPropertyAccessStrategy().mapProperties(classHierarchy);
+        Set<? extends MappedProperty<?>> properties = configuration.getPropertyMapper().mapUdt(udtClass);
 
         for (MappedProperty<?> mappedProperty : properties) {
 
-            if (configuration.getPropertyTransienceStrategy().isTransient(mappedProperty))
-                continue;
-
-            PropertyMapper<?> propertyMapper = new PropertyMapper(mappedProperty, null);
-
-            if (mappedProperty instanceof AnnotatedMappedProperty)
-                AnnotationChecks.validateAnnotations(((AnnotatedMappedProperty<?>) mappedProperty), VALID_FIELD_ANNOTATIONS);
+            AliasedMappedProperty<?> aliasedMappedProperty = new AliasedMappedProperty(mappedProperty, null);
 
             if (!userType.contains(mappedProperty.getMappedName()))
                 throw new IllegalArgumentException(String.format("Field %s does not exist in type %s.%s",
@@ -203,7 +164,7 @@ class AnnotationParser {
             for (Class<?> fieldUdt : TypeMappings.findUDTs(mappedProperty.getPropertyType().getType()))
                 mappingManager.getUDTCodec(fieldUdt);
 
-            propertyMappers.put(mappedProperty.getMappedName(), propertyMapper);
+            propertyMappers.put(mappedProperty.getMappedName(), aliasedMappedProperty);
         }
 
         return new MappedUDTCodec<T>(userType, udtClass, propertyMappers, mappingManager);
