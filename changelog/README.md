@@ -3,6 +3,7 @@
 ### 3.0.8 (in progress)
 
 - [bug] JAVA-1404: Fix min token handling in TokenRange.contains.
+- [bug] JAVA-1431: Surface AuthenticationException during pool initialization.
 
 
 ### 3.0.7

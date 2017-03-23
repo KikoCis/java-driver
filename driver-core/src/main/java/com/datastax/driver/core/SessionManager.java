@@ -370,14 +370,17 @@ class SessionManager extends AbstractSession {
                         if (t instanceof UnsupportedProtocolVersionException) {
                             cluster.manager.logUnsupportedVersionProtocol(host, ((UnsupportedProtocolVersionException) t).getUnsupportedVersion());
                             cluster.manager.triggerOnDown(host, false);
+                            future.set(false);
                         } else if (t instanceof ClusterNameMismatchException) {
                             ClusterNameMismatchException e = (ClusterNameMismatchException) t;
                             cluster.manager.logClusterNameMismatch(host, e.expectedClusterName, e.actualClusterName);
                             cluster.manager.triggerOnDown(host, false);
+                            future.set(false);
                         } else {
-                            logger.warn("Error creating pool to " + host, t);
+                            logger.error("Error creating pool to " + host, t);
+                            future.setException(t);
+                            cluster.manager.triggerOnDown(host, true);
                         }
-                        future.set(false);
                     }
                 });
                 return future;
@@ -431,7 +434,7 @@ class SessionManager extends AbstractSession {
         }
 
         // Wait pool creation before removing, so we don't lose connectivity
-        ListenableFuture<?> allPoolsCreatedFuture = Futures.successfulAsList(poolCreatedFutures);
+        ListenableFuture<?> allPoolsCreatedFuture = Futures.allAsList(poolCreatedFutures);
 
         return Futures.transform(allPoolsCreatedFuture, new AsyncFunction<Object, List<Void>>() {
             @Override

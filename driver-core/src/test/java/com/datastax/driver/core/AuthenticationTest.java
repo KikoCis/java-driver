@@ -25,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 import static com.datastax.driver.core.CreateCCM.TestMode.PER_METHOD;
 import static com.datastax.driver.core.TestUtils.findHost;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.Mockito.*;
 
 /**
@@ -83,6 +84,31 @@ public class AuthenticationTest extends CCMTestsSupport {
             cluster.connect();
         } finally {
             assertThat(cluster.getMetrics().getErrorMetrics().getAuthenticationErrors().getCount()).isEqualTo(1);
+        }
+    }
+
+    /**
+     * Ensures that the driver throws an AuthenticationException
+     * when an authentication error occurs during connection pool initialization.
+     *
+     * @jira_ticket JAVA-1431
+     */
+    @Test(groups = "short")
+    @CCMConfig(dirtiesContext = true)
+    public void should_not_connect_with_wrong_credentials() throws InterruptedException {
+        PlainTextAuthProvider authProvider = new PlainTextAuthProvider("cassandra", "cassandra");
+        Cluster cluster = Cluster.builder()
+                .addContactPoints(getContactPoints())
+                .withPort(ccm().getBinaryPort())
+                .withAuthProvider(authProvider)
+                .build();
+        cluster.init();
+        authProvider.setPassword("wrong");
+        try {
+            cluster.connect();
+            fail("should have thrown AuthenticationException");
+        } catch (AuthenticationException e) {
+            // ok
         }
     }
 

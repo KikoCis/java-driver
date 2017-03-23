@@ -174,6 +174,7 @@ class HostConnectionPool implements Connection.Owner {
                 // accordingly in SessionManager#maybeAddPool.
                 Throwables.propagateIfInstanceOf(t, ClusterNameMismatchException.class);
                 Throwables.propagateIfInstanceOf(t, UnsupportedProtocolVersionException.class);
+                Throwables.propagateIfInstanceOf(t, AuthenticationException.class);
 
                 // We don't want to swallow Errors either as they probably indicate a more serious issue (OOME...)
                 Throwables.propagateIfInstanceOf(t, Error.class);
